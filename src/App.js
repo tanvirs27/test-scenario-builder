@@ -10,6 +10,20 @@ const paramFormModel = [
   { key: "value", label: "Value", props: { required: true } }
 ];
 
+const paramsTableHeaders = [
+  { key: "name", value: "Name" },
+  { key: "value", value: "Value" },
+  { key: "action", value: "Action" }
+];
+
+const testFormModel = [
+  { key: "name", label: "Name", props: { required: true } },
+  { key: "type", label: "Type" , props: { required: true }},
+  { key: "selector", label: "Selector" , props: { required: true }},
+  { key: "value", label: "Value" },
+  { key: "waitForSelector", label: "Wait for Selector" }
+];
+
 class App extends React.Component {
 
   constructor(props) {
@@ -17,6 +31,7 @@ class App extends React.Component {
 
     this.state = {
       params: [],
+      tests: [],
       page: "scenario"
     };
   }
@@ -29,6 +44,12 @@ class App extends React.Component {
     var id = this.getUniqueId();
     this.setState({ page: 'paramForm', formId: id });
     console.log("Add Param id:: " + id);
+  }
+
+  openAddTestForm = (e) => {
+    var id = this.getUniqueId();
+    this.setState({ page: 'testForm', formId: id });
+    console.log("Add Test id:: " + id);
   }
 
   openEditParamForm = (e, key) => {
@@ -103,6 +124,39 @@ class App extends React.Component {
     });
   };
 
+  submitTestForm = model => {
+    // var tempTests = [...this.state.tests];
+    // var index = -1;
+
+    // tempTests.forEach((test, idx) => {
+    //   if (test.key === model.id) {
+    //     index = idx;
+    //     return;
+    //   }
+    // });
+
+    // if (index !== -1) {
+    //   tempTests[index].type = model.type;
+    //   tempTests[index].selector = model.selector;
+    //   tempTests[index].value = model.value;
+    //   tempTests[index].waitForSelector = model.waitForSelector;
+
+    // } else {
+    //   var param = {
+    //     key: model.id,
+    //     name: model.name,
+    //     value: model.value,
+    //     action: <><span onClick={(e) => this.openEditParamForm(e, model.id)}> <MdEdit /> </span>
+    //       <span onClick={(e) => this.removeParam(e, model.id)}> <MdDelete /></span> </>
+    //   };
+    //   tempParams = tempParams.concat(param);
+    // }
+
+    // this.setState((state) => {
+    //   return ({ params: tempParams, page: "scenario", addParamId: null, defaultFormValues: [] });
+    // });
+  };
+
   render() {
 
     function LabelValue(props) {
@@ -116,11 +170,6 @@ class App extends React.Component {
       );
     }
 
-    const paramsTableHeaders = [
-      { key: "name", value: "Name" },
-      { key: "value", value: "Value" },
-      { key: "action", value: "Action" }
-    ]
 
     var table = <Table name="paramTable" model={paramsTableHeaders} data={this.state.params} />;
 
@@ -134,27 +183,51 @@ class App extends React.Component {
         </div>
       </>;
 
+    var singleTest =
+      <>
+        <LabelValue label="Type" value="type" />
+        <LabelValue label="Selector" value="selector" />
+        <LabelValue label="Value" value="value" />
+        <LabelValue label="Wait For Selector" value="wait for selector" />
+      </>;
+
     var testsBody =
       <>
+        <div className="card">
+          <div className="card-header">
+            Test 1 :: (Type: Validation)
+          </div>
+          <div className="card-body">
+            <div className="card-header">Inputs</div>
+            <Card title="Input 1" body={singleTest}/>
+          </div>
+        </div>
       </>;
 
     if (this.state.page === 'scenario') {
       return (
         <>
-          <div className="col-sm-10 offset-sm-1" style={{marginTop: 20}}>
+          <div className="col-sm-10 offset-sm-1" style={{ marginTop: 20 }}>
             <Card title="Scenario" body={scenarioBody} />
           </div>
 
-          <hr/>
+          <hr />
           <div className="col-sm-10 offset-sm-1">
-            <Card title="Tests" headerRight={<button>Add Test</button>} body={testsBody} />
+            <div className="card-header">
+              <span className="card-title h5">Tests</span>
+              <span className="float-sm-right">
+                <button className="btn btn-sm btn-primary" onClick={this.openAddTestForm} >Add Test</button>
+              </span>
+            </div>
+            {/* <Card title="Tests" headerRight={<button>Add Test</button>} body={testsBody} /> */}
+            {testsBody}
           </div>
         </>
       );
 
     } else if (this.state.page === 'paramForm') {
       return (
-        <div className="col-sm-10 offset-sm-1">
+        <div className="col-sm-10 offset-sm-1" style={{ marginTop: 20 }}>
           <DynamicForm
             key={this.state.formId}
             id={this.state.formId}
@@ -168,7 +241,24 @@ class App extends React.Component {
         </div>
       );
 
-    } else {
+    } else if (this.state.page === 'testForm') {
+      return (
+        <div className="col-sm-10 offset-sm-1" style={{ marginTop: 20 }}>
+          <DynamicForm
+            key={this.state.formId}
+            id={this.state.formId}
+            title="Test Form"
+            model={testFormModel}
+            defaultValues={this.state.defaultFormValues}
+            onSubmit={model => {
+              this.submitTestForm(model);
+            }}
+          />
+        </div>
+      );
+
+    }
+     else {
       return ("");
     }
   }
