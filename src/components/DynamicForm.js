@@ -8,6 +8,7 @@ export default class DynamicForm extends React.Component {
 
         this.state = {
             id: props.id,
+            extraParam: props.extraParam,
             ...props.defaultValues
         };
 
