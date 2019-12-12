@@ -1,7 +1,5 @@
 import React from 'react';
-import DynamicForm from '../components/DynamicForm'
 import Card from '../components/Card'
-import Table from '../components/Table'
 import LabelValue from '../components/LabelValue'
 
 var target;
@@ -14,9 +12,6 @@ function makeSingleTestComponent(component) {
         <LabelValue label="Wait For Selector" value={component.waitForSelector} />
     </>;
 }
-
-// action: <><span onClick={(e) => this.openEditTestForm(e, model.id)}> <MdEdit /> </span>
-        //   <span onClick={(e) => this.removeParam(e, model.id)}> <MdDelete /></span> </>
 
 function makeSingleTest(test) {
     return <>
@@ -33,7 +28,7 @@ function makeSingleTest(test) {
                 <div className="card-header">
                     <span className="card-title h5">Inputs</span>
                     <span className="float-sm-right">
-                        <button className="btn btn-sm btn-primary" onClick="" >Add Input</button>
+                        <button className="btn btn-sm btn-primary" onClick={(e) => target.openAddInputForm(e, test.key)} >Add Input</button>
                     </span>
                 </div>
 
@@ -41,8 +36,8 @@ function makeSingleTest(test) {
                     return <Card title={input.name}
                         headerRight={
                             <>
-                                <button className="btn btn-sm btn-primary" style={{ marginRight: 10 }} onClick="" >Edit</button>
-                                <button className="btn btn-sm btn-danger" onClick="" >Remove</button>
+                                <button className="btn btn-sm btn-primary" style={{ marginRight: 10 }} onClick={(e) => target.openEditInputForm(e, input.key, test.key)} >Edit</button>
+                                <button className="btn btn-sm btn-danger" onClick={(e) => target.removeInput(e, input.key, test.key)} >Remove</button>
                             </>
                         }
                         body={makeSingleTestComponent(input)} />
@@ -54,8 +49,7 @@ function makeSingleTest(test) {
                 <Card title="Action"
                     headerRight={
                         <>
-                            <button className="btn btn-sm btn-primary" style={{ marginRight: 10 }} onClick="" >Edit</button>
-                            <button className="btn btn-sm btn-danger" onClick="" >Remove</button>
+                            <button className="btn btn-sm btn-primary" style={{ marginRight: 10 }} onClick={(e) => target.openEditActionForm(e, test.key)} >Edit</button>
                         </>
                     }
                     body={makeSingleTestComponent(test.action)} />
@@ -65,7 +59,7 @@ function makeSingleTest(test) {
                 <div className="card-header">
                     <span className="card-title h5">Outputs</span>
                     <span className="float-sm-right">
-                        <button className="btn btn-sm btn-primary" onClick="" >Add Output</button>
+                        <button className="btn btn-sm btn-primary" onClick={(e) => target.openAddOutputForm(e, test.key)} >Add Output</button>
                     </span>
                 </div>
 
@@ -73,8 +67,8 @@ function makeSingleTest(test) {
                     return <Card title={output.name}
                         headerRight={
                             <>
-                                <button className="btn btn-sm btn-primary" style={{ marginRight: 10 }} onClick="" >Edit</button>
-                                <button className="btn btn-sm btn-danger" onClick="" >Remove</button>
+                                <button className="btn btn-sm btn-primary" style={{ marginRight: 10 }} onClick={(e) => target.openEditOutputForm(e, output.key, test.key)} >Edit</button>
+                                <button className="btn btn-sm btn-danger" onClick={(e) => target.removeOutput(e, output.key, test.key)} >Remove</button>
                             </>
                         }
                         body={makeSingleTestComponent(output)} />

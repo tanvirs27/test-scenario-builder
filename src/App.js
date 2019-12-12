@@ -4,9 +4,17 @@ import Card from './components/Card'
 import Table from './components/Table'
 import LabelValue from './components/LabelValue'
 import './css/theme.css';
+import './App.css';
 import { MdEdit, MdDelete } from 'react-icons/md';
+import Files from "react-files";
 
 import makeTestsList from './helper/helper';
+
+const scenarioFormModel = [
+  { key: "name", label: "Name", props: { required: true } },
+  { key: "url", label: "URL", props: { required: true } },
+  { key: "waitForSelector", label: "Wait for Selector", props: { required: true } }
+];
 
 const paramFormModel = [
   { key: "name", label: "Name", props: { required: true } },
@@ -21,13 +29,13 @@ const paramsTableHeaders = [
 
 const testFormModel = [
   { key: "name", label: "Name", props: { required: true } },
-  { key: "type", label: "Type" , props: { required: true }},
+  { key: "type", label: "Type", props: { required: true } },
 ];
 
 const testComponentFormModel = [
   { key: "name", label: "Name", props: { required: true } },
-  { key: "type", label: "Type" , props: { required: true }},
-  { key: "selector", label: "Selector" , props: { required: true }},
+  { key: "type", label: "Type", props: { required: true } },
+  { key: "selector", label: "Selector", props: { required: true } },
   { key: "value", label: "Value" },
   { key: "waitForSelector", label: "Wait for Selector" }
 ];
@@ -38,9 +46,26 @@ class App extends React.Component {
     super(props);
 
     this.state = {
+      name: "",
+      url: "",
       params: [],
       tests: [],
       page: "scenario"
+    };
+
+    this.fileReader = new FileReader();
+    this.fileReader.onload = event => {
+      var jsonFile = JSON.parse(event.target.result);
+
+      this.setState({
+        name: jsonFile.name,
+        url: jsonFile.url,
+        // params: [...jsonFile.params],
+        tests: [...jsonFile.tests],
+        page: "scenario"
+      }, () => {
+        console.log(this.state.jsonFile);
+      });
     };
   }
 
@@ -61,6 +86,18 @@ class App extends React.Component {
     return index;
   }
 
+  escapeDots(value) {
+    return value.replace(/\./g, '\\.').replace(/\[/g, '\\[').replace(/\]/g, '\\]');
+  };
+
+  download = (e) => {
+    window.download(JSON.stringify(this.state), this.state.name + ".json", "text/plain");
+  }
+
+  uploadFile = (e) => {
+    this.setState({ page: 'uploadFilePage' });
+  }
+
   openAddParamForm = (e) => {
     var id = this.getUniqueId();
     this.setState({ page: 'paramForm', formId: id });
@@ -73,10 +110,29 @@ class App extends React.Component {
     console.log("Add Test id:: " + id);
   }
 
-  openAddInputForm = (e) => {
+  openAddInputForm = (e, testKey) => {
     var id = this.getUniqueId();
-    this.setState({ page: 'inputForm', formId: id });
+    this.setState({ page: 'inputForm', formId: id, extraParam: testKey });
     console.log("Add Input id:: " + id);
+  }
+
+  openAddOutputForm = (e, testKey) => {
+    var id = this.getUniqueId();
+    this.setState({ page: 'outputForm', formId: id, extraParam: testKey });
+    console.log("Add Output id:: " + id);
+  }
+
+  openEditScenarioForm = (e) => {
+    var id = this.state.key ? this.state.key : this.getUniqueId();
+
+    var defaultFormValues = {
+      name: this.state.name,
+      url: this.state.url,
+      waitForSelector: this.state.waitForSelector
+    };
+
+    this.setState({ page: 'scenarioForm', formId: id, defaultFormValues: defaultFormValues });
+    console.log("Edit Scenario id:: " + id);
   }
 
   openEditParamForm = (e, key) => {
@@ -127,7 +183,7 @@ class App extends React.Component {
     var tempTests = [...this.state.tests];
     var testIndex = this.findIndexByKey(tempTests, testKey);
 
-    if(testIndex === -1) {
+    if (testIndex === -1) {
       return;
     }
 
@@ -135,11 +191,56 @@ class App extends React.Component {
     var index = this.findIndexByKey(tempInputs, key);
 
     if (index !== -1) {
-      this.setState({ page: 'inputForm', formId: key, defaultFormValues: tempInputs[index] }); //TODO we might need to pass testKey
+      this.setState({
+        page: 'inputForm',
+        formId: key,
+        defaultFormValues: tempInputs[index],
+        extraParam: testKey
+      });
     }
 
     // this.setState({ page: 'inputForm', formId: key }); 
     console.log("Edit Input id:: " + key);
+  }
+
+  openEditActionForm = (e, testKey) => {
+    e.preventDefault();
+
+    var tempTests = [...this.state.tests];
+    var index = this.findIndexByKey(tempTests, testKey);
+
+    if (index !== -1) {
+      this.setState({ page: 'actionForm', formId: testKey, defaultFormValues: tempTests[index].action });
+    }
+
+    // this.setState({ page: 'testForm', formId: key });
+    console.log("Edit Test id:: " + testKey);
+  }
+
+  openEditOutputForm = (e, key, testKey) => {
+    e.preventDefault();
+
+    var tempTests = [...this.state.tests];
+    var testIndex = this.findIndexByKey(tempTests, testKey);
+
+    if (testIndex === -1) {
+      return;
+    }
+
+    var tempOutputs = [...tempTests[testIndex].outputs];
+    var index = this.findIndexByKey(tempOutputs, key);
+
+    if (index !== -1) {
+      this.setState({
+        page: 'outputForm',
+        formId: key,
+        defaultFormValues: tempOutputs[index],
+        extraParam: testKey
+      });
+    }
+
+    // this.setState({ page: 'inputForm', formId: key }); 
+    console.log("Edit Output id:: " + key);
   }
 
   removeParam = (e, key) => {
@@ -182,6 +283,52 @@ class App extends React.Component {
     console.log(key + " " + index);
   }
 
+  removeInput = (e, key, testKey) => {
+    e.preventDefault();
+    var tempTests = [...this.state.tests];
+    var testIndex = this.findIndexByKey(tempTests, testKey);
+
+    if (testIndex === -1) {
+      return;
+    }
+
+    var tempInputs = [...tempTests[testIndex].inputs];
+    var index = this.findIndexByKey(tempInputs, key);
+
+    if (index !== -1) {
+      tempTests[testIndex].inputs.splice(index, 1);
+      this.setState({ tests: tempTests });
+    }
+  }
+
+  removeOutput = (e, key, testKey) => {
+    e.preventDefault();
+    var tempTests = [...this.state.tests];
+    var testIndex = this.findIndexByKey(tempTests, testKey);
+
+    if (testIndex === -1) {
+      return;
+    }
+
+    var tempOutputs = [...tempTests[testIndex].outputs];
+    var index = this.findIndexByKey(tempOutputs, key);
+
+    if (index !== -1) {
+      tempTests[testIndex].outputs.splice(index, 1);
+      this.setState({ tests: tempTests });
+    }
+  }
+
+  submitScenarioForm = model => {
+    var name = model.name;
+    var url = model.url;
+    var waitForSelector = model.waitForSelector;
+
+    this.setState((state) => {
+      return ({ key: model.id, name: name, url: url, waitForSelector: waitForSelector, page: "scenario", formId: null, defaultFormValues: [] });
+    });
+  };
+
   submitParamForm = model => {
     var tempParams = [...this.state.params];
     var index = -1;
@@ -209,7 +356,7 @@ class App extends React.Component {
     }
 
     this.setState((state) => {
-      return ({ params: tempParams, page: "scenario", addParamId: null, defaultFormValues: [] });
+      return ({ params: tempParams, page: "scenario", formId: null, defaultFormValues: [] });
     });
   };
 
@@ -227,9 +374,6 @@ class App extends React.Component {
     if (index !== -1) {
       tempTests[index].name = model.name;
       tempTests[index].type = model.type;
-      // tempTests[index].selector = model.selector;
-      // tempTests[index].value = model.value;
-      // tempTests[index].waitForSelector = model.waitForSelector;
 
     } else {
       var test = {
@@ -237,13 +381,8 @@ class App extends React.Component {
         name: model.name,
         type: model.type,
         inputs: [],
-        action: {},
-        outputs: [],
-        // selector: model.selector,
-        // value: model.value,
-        // waitForSelector: model.waitForSelector,
-        action: <><span onClick={(e) => this.openEditTestForm(e, model.id)}> <MdEdit /> </span>
-          <span onClick={(e) => this.removeParam(e, model.id)}> <MdDelete /></span> </>
+        action: { key: this.getUniqueId() },
+        outputs: []
       };
       tempTests = tempTests.concat(test);
     }
@@ -253,124 +392,129 @@ class App extends React.Component {
     });
   };
 
-  render() {
+  submitActionForm = model => {
+    var tempTests = [...this.state.tests];
+    var index = this.findIndexByKey(tempTests, model.id);
 
-    var sampleTests =  [
-      {
-          "name": "test-1",
-          "type": "validation",
-          "inputs": [
-              {
-                  "name": "input 1",
-                  "type": "link",
-                  "selector": "#pageContent > div > section.panel.panel-info > div.panel-body > div:nth-child(2) > a",
-                  "value": "click",
-                  "waitForSelector": "input[name='_action_select_service']"
-              }
-          ],
-          "action": {
-              "type": "button",
-              "selector": "input[name='_action_select_service']",
-              "waitForSelector": ".alert-danger"
-          },
-          "outputs": [
-              {
-                  "name": "output 1",
-                  "type": "text",
-                  "selector": "#preAuth\\.waiver\\.errors",
-                  "value": "Required"
-              }
-          ]
-      },
-      {
-          "name": "test-2",
-          "type": "validation",
-          "inputs": [
-              {
-                  "name": "input 1",
-                  "type": "select-with-search",
-                  "selector": "preAuth\\.waiver",
-                  "value": "TH002 - LTSS Caregiver Program"
-              },
-              {
-                  "name": "input 2",
-                  "type": "button",
-                  "selector": "input[name='_action_select_service']",
-                  "value": "click",
-                  "waitForSelector": "#preAuth\\.service"
-              }
-          ],
-          "action": {
-              "type": "button",
-              "selector": "input[name='_action_select_service_provider']",
-              "waitForSelector": ".alert-danger"
-          },
-          "outputs": [
-              {
-                  "name": "output 1",
-                  "type": "text",
-                  "selector": "#preAuth\\.service\\.errors",
-                  "value": "Required"
-              },
-              {
-                  "name": "output 2",
-                  "type": "text",
-                  "selector": "#preAuth\\.fromDate\\.errors",
-                  "value": "Required"
-              },
-              {
-                  "name": "output 3",
-                  "type": "text",
-                  "selector": "#preAuth\\.toDate\\.errors",
-                  "value": "Required"
-              },
-              {
-                  "name": "output 4",
-                  "type": "text",
-                  "selector": "#preAuth\\.totalUnit\\.errors",
-                  "value": "Cannot be negative or empty"
-              }
-          ]
-      }];
+    if (index !== -1) {
+      tempTests[index].action.name = model.name;
+      tempTests[index].action.type = model.type;
+      tempTests[index].action.selector = model.selector;
+      tempTests[index].action.value = model.value;
+      tempTests[index].action.waitForSelector = model.waitForSelector;
+    }
+
+    this.setState((state) => {
+      return ({ tests: tempTests, page: "scenario", formId: null, defaultFormValues: [] });
+    });
+  };
+
+  submitInputForm = model => {
+    var testKey = model.extraParam;
+    var tempTests = [...this.state.tests];
+    var testIndex = this.findIndexByKey(tempTests, testKey);
+
+    if (testIndex === -1) {
+      return;
+    }
+
+    var tempInputs = [...tempTests[testIndex].inputs];
+    var index = this.findIndexByKey(tempInputs, model.id);
+
+    if (index !== -1) {
+
+      tempTests[testIndex].inputs[index].name = model.name;
+      tempTests[testIndex].inputs[index].type = model.type;
+      tempTests[testIndex].inputs[index].selector = model.selector;
+      tempTests[testIndex].inputs[index].value = model.value;
+      tempTests[testIndex].inputs[index].waitForSelector = model.waitForSelector;
+
+    } else {
+      var input = {
+        key: model.id,
+        name: model.name,
+        type: model.type,
+        selector: model.selector,
+        value: model.value,
+        waitForSelector: model.waitForSelector,
+      };
+
+      tempInputs = tempInputs.concat(input);
+      tempTests[testIndex].inputs = tempInputs;
+    }
+
+    this.setState((state) => {
+      return ({ tests: tempTests, page: "scenario", formId: null, defaultFormValues: [], extraParam: null });
+    });
+  };
+
+  submitOutputForm = model => {
+    var testKey = model.extraParam;
+    var tempTests = [...this.state.tests];
+    var testIndex = this.findIndexByKey(tempTests, testKey);
+
+    if (testIndex === -1) {
+      return;
+    }
+
+    var tempOutputs = [...tempTests[testIndex].outputs];
+    var index = this.findIndexByKey(tempOutputs, model.id);
+
+    if (index !== -1) {
+      tempTests[testIndex].outputs[index].name = model.name;
+      tempTests[testIndex].outputs[index].type = model.type;
+      tempTests[testIndex].outputs[index].selector = model.selector;
+      tempTests[testIndex].outputs[index].value = model.value;
+      tempTests[testIndex].outputs[index].waitForSelector = model.waitForSelector;
+
+    } else {
+      var output = {
+        key: model.id,
+        name: model.name,
+        type: model.type,
+        selector: model.selector,
+        value: model.value,
+        waitForSelector: model.waitForSelector,
+      };
+
+      tempOutputs = tempOutputs.concat(output);
+      tempTests[testIndex].outputs = tempOutputs;
+    }
+
+    this.setState((state) => {
+      return ({ tests: tempTests, page: "scenario", formId: null, defaultFormValues: [], extraParam: null });
+    });
+  };
+
+
+  render() {
 
     var table = <Table name="paramTable" model={paramsTableHeaders} data={this.state.params} />;
 
     var scenarioBody =
       <>
-        <LabelValue label="Name" value="A Brand new Scenario" />
-        <LabelValue label="URL" value="A Brand new URL" />
+        <LabelValue label="Name" value={this.state.name} />
+        <LabelValue label="URL" value={this.state.url} />
+        <LabelValue label="Wait For Selector" value={this.state.waitForSelector} />
         <LabelValue label="Params" value={table} />
         <div className="text-right">
-          <button className="btn btn-primary" name="_add_params" onClick={this.openAddParamForm}>Add Param</button>
+          <button className="btn btn-sm btn-primary" name="_add_params" onClick={this.openAddParamForm}>Add Param</button>
         </div>
       </>;
-
-    // var singleTest =
-    //   <>
-    //     <LabelValue label="Type" value="type" />
-    //     <LabelValue label="Selector" value="selector" />
-    //     <LabelValue label="Value" value="value" />
-    //     <LabelValue label="Wait For Selector" value="wait for selector" />
-    //   </>;
-
-    // var testsBody =
-    //   <>
-    //     <div className="card">
-    //       <div className="card-header">
-    //         Test 1 :: (Type: Validation)
-    //       </div>
-    //       <div className="card-body">
-    //         <div className="card-header">Inputs</div>
-    //         <Card title="Input 1" body={singleTest}/>
-    //       </div>
-    //     </div>
-    //   </>;
 
     if (this.state.page === 'scenario') {
       return (
         <>
           <div className="col-sm-10 offset-sm-1" style={{ marginTop: 20 }}>
-            <Card title="Scenario" body={scenarioBody} />
+            <Card title="Scenario"
+              headerRight={
+                <>
+                  <button className="btn btn-sm btn-primary" style={{ marginRight: 10 }} onClick={(e) => this.openEditScenarioForm(e)}>Edit</button>
+                  <button className="btn btn-sm btn-success" style={{ marginRight: 10 }} onClick={(e) => this.download(e)}>Download</button>
+                  <button className="btn btn-sm btn-success" onClick={(e) => this.uploadFile(e)}>Upload</button>
+                </>
+              }
+              body={scenarioBody} />
           </div>
 
           <hr />
@@ -381,7 +525,6 @@ class App extends React.Component {
                 <button className="btn btn-sm btn-primary" onClick={this.openAddTestForm} >Add Test</button>
               </span>
             </div>
-            {/* <Card title="Tests" headerRight={<button>Add Test</button>} body={testsBody} /> */}
             {makeTestsList(this.state.tests, this)}
           </div>
         </>
@@ -419,8 +562,93 @@ class App extends React.Component {
         </div>
       );
 
+    } else if (this.state.page === 'inputForm') {
+      return (
+        <div className="col-sm-10 offset-sm-1" style={{ marginTop: 20 }}>
+          <DynamicForm
+            key={this.state.formId}
+            id={this.state.formId}
+            extraParam={this.state.extraParam}
+            title="Input Form"
+            model={testComponentFormModel}
+            defaultValues={this.state.defaultFormValues}
+            onSubmit={model => {
+              this.submitInputForm(model);
+            }}
+          />
+        </div>
+      );
+
+    } else if (this.state.page === 'outputForm') {
+      return (
+        <div className="col-sm-10 offset-sm-1" style={{ marginTop: 20 }}>
+          <DynamicForm
+            key={this.state.formId}
+            id={this.state.formId}
+            extraParam={this.state.extraParam}
+            title="Output Form"
+            model={testComponentFormModel}
+            defaultValues={this.state.defaultFormValues}
+            onSubmit={model => {
+              this.submitOutputForm(model);
+            }}
+          />
+        </div>
+      );
+
+    } else if (this.state.page === 'actionForm') {
+      return (
+        <div className="col-sm-10 offset-sm-1" style={{ marginTop: 20 }}>
+          <DynamicForm
+            key={this.state.formId}
+            id={this.state.formId}
+            title="Action Form"
+            model={testComponentFormModel}
+            defaultValues={this.state.defaultFormValues}
+            onSubmit={model => {
+              this.submitActionForm(model);
+            }}
+          />
+        </div>
+      );
+
+    } else if (this.state.page === 'scenarioForm') {
+      return (
+        <div className="col-sm-10 offset-sm-1" style={{ marginTop: 20 }}>
+          <DynamicForm
+            key={this.state.formId}
+            id={this.state.formId}
+            title="Scenario Form"
+            model={scenarioFormModel}
+            defaultValues={this.state.defaultFormValues}
+            onSubmit={model => {
+              this.submitScenarioForm(model);
+            }}
+          />
+        </div>
+      );
+
+    } else if (this.state.page === 'uploadFilePage') {
+      return (<div>
+        <Files
+          className="file-upload"
+          onChange={file => {
+            this.fileReader.readAsText(file[0]);
+          }}
+          onError={err => console.log(err)}
+          accepts={[".json"]}
+          multiple={false}
+          maxFiles={1}
+          maxFileSize={10000000}
+          minFileSize={0}
+          clickable
+        >
+          <p>Drop Scenario file here or click to upload</p>
+        </Files>
+      </div>
+      );
     }
-     else {
+    else {
       return ("");
     }
   }
